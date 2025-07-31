@@ -212,6 +212,10 @@ const clickSchema = new mongoose.Schema({
   clickedAt: {
     type: Date,
     default: Date.now
+  },
+  device_id:{
+    type: String,
+    default: ''
   }
 }, {
   timestamps: true

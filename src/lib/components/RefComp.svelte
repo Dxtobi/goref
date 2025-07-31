@@ -2,12 +2,9 @@
   import { formatDate } from "$lib/utils/helpers";
   import ReferralLinkGenerator from "./ReferralLinkGenerator.svelte";
 
-
- 
    let  { link } =$props();
    let copiedId = $state('')
    let generateLinkCompActive  = $state(false)
-
 
    const generateReferral =(link)=>{
         generateLinkCompActive=!generateLinkCompActive
@@ -15,8 +12,7 @@
 
 </script>
 
-<div
-      class="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200 overflow-hidden"
+<div class="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200 overflow-hidden"
     >
       <!-- Header with user info -->
       <div class="p-6 pb-4">

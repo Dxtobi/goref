@@ -5,13 +5,12 @@ export class LinkTracker {
   /**
    * Record a click event and award points
    */
-  static async recordClick(referralCode, request) {
+  static async recordClick(referralCode, request, locals, deviceId) {
     try {
       // Get client info
       const ipAddress = this.getClientIP(request);
       const userAgent = request.headers.get('user-agent') || '';
       const referrer = request.headers.get('referer') || null;
-      
       // Find the referral link
       const referralLink = await ReferralLink.findOne({ 
         referralCode, 
@@ -29,42 +28,51 @@ export class LinkTracker {
       }
 
       // Check for unique click (same IP within 24 hours)
-      const isUnique = await this.isUniqueClick(referralLink._id, ipAddress);
+      const isUnique = await this.isUniqueClick(referralLink._id, ipAddress, deviceId);
       
-      // Get location data
-      const locationData = await geoip.lookup(ipAddress);
-      
-      // Create click record
-      const click = new Click({
-        referralLink: referralLink._id,
-        masterLink: masterLink._id,
-        sharer: referralLink.sharer._id,
-        ipAddress,
-        userAgent,
-        country: locationData?.country || null,
-        city: locationData?.city || null,
-        referrer,
-        pointsAwarded: isUnique ? masterLink.pointsPerClick : 0,
-        isUnique,
-        clickedAt: new Date()
-      });
-
-      await click.save();
-
-      // Update counters
-      await this.updateCounters(referralLink, masterLink, isUnique);
+     
 
       // Award points if unique click
       if (isUnique && masterLink.pointsPerClick > 0) {
-        await this.awardPoints(referralLink.sharer, masterLink, referralLink, click);
-      }
+         // Get location data
+        const locationData = await geoip.lookup(ipAddress);
+        
+        // Create click record
+        const click = new Click({
+          referralLink: referralLink._id,
+          masterLink: masterLink._id,
+          sharer: referralLink.sharer._id,
+          ipAddress,
+          userAgent,
+          country: locationData?.country || null,
+          city: locationData?.city || null,
+          referrer,
+          pointsAwarded: isUnique ? masterLink.pointsPerClick : 0,
+          isUnique,
+          device_id:deviceId,
+          clickedAt: new Date()
+        });
 
-      return {
+        await click.save();
+
+        // Update counters
+        await this.updateCounters(referralLink, masterLink, isUnique);
+        await this.awardPoints(referralLink.sharer, masterLink, referralLink, click);
+        return {
         success: true,
         redirectUrl: masterLink.originalUrl,
         pointsAwarded: click.pointsAwarded,
         click: click._id
       };
+      }
+
+      return {
+        success: true,
+        redirectUrl: masterLink.originalUrl,
+        pointsAwarded: 0,
+        click: 0
+      };
+      
     } catch (error) {
       console.error('Error recording click:', error);
       throw error;
@@ -74,12 +82,13 @@ export class LinkTracker {
   /**
    * Check if this is a unique click
    */
-  static async isUniqueClick(referralLinkId, ipAddress) {
+  static async isUniqueClick(referralLinkId, ipAddress, deviceId) {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     
     const existingClick = await Click.findOne({
       referralLink: referralLinkId,
       ipAddress,
+      device_id:deviceId,
       clickedAt: { $gte: twentyFourHoursAgo }
     });
 
